@@ -193,7 +193,7 @@ BUILT_SOURCES = $(TEMPLATE_FILES) build.h
 .PHONY: .FORCE
 .FORCE:
 build.h: .FORCE
-	echo "#define BUILD_REPOSITORY_STATUS \"`git describe --dirty`\"" > $@
+	echo "#define BUILD_REPOSITORY_STATUS \"`git describe --always --dirty || echo NoGitInfo`\"" > $@
 
 
 AM_CFLAGS = -I$(top_srcdir)/qsopt_ex -I$(top_builddir)/qsopt_ex -I$(top_srcdir)/exact -I$(top_builddir)/exact
