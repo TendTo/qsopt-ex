@@ -245,10 +245,10 @@ static int QSdelta_full_basis_status (int *status_type,
         MESSAGE (msg_lvl, "Dual feasible: set %s to %lf",
                  p_mpq->qslp->objsense == QS_MIN ? "obj_lo" : "obj_up",
                  mpq_get_d (p_mpq->lp->dobjval));
-        QSlog ("bz:");
-        mpq_QSdump_bz (p_mpq);
-        QSlog ("piz:");
-        mpq_QSdump_piz (p_mpq);
+        // QSlog ("bz:");
+        // mpq_QSdump_bz (p_mpq);
+        // QSlog ("piz:");
+        // mpq_QSdump_piz (p_mpq);
       }
       *have_dual = 1;
     }
