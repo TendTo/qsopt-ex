@@ -184,9 +184,14 @@ static int QSdelta_full_basis_status (int *status_type,
       else
         EGcallD (mpq_QSget_infeas_array_rval);
     }
-    infeasible_output (p_mpq, y, y_mpq);
-    *status_type = 1;
-    goto CLEANUP;
+    if (QSexact_infeasible_test (p_mpq, y_mpq)) {
+      infeasible_output (p_mpq, y, y_mpq);
+      *status_type = 1;
+      goto CLEANUP;
+    } else {
+      *status_type = 2;
+      goto CLEANUP;
+    }
   }
   else if (QS_LP_UNBOUNDED == *status)
   {
