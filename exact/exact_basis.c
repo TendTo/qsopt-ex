@@ -122,7 +122,7 @@ int QSexact_basis_status (mpq_QSdata * p_mpq,
     p_mpq->lp->pIpiz = mpq_EGlpNumAllocArray (p_mpq->lp->nrows);
     mpq_ILLfct_compute_phaseI_piz (p_mpq->lp);
   }
-  else if (p_mpq->lp->basisstat.primal_unbounded)
+  else if (p_mpq->lp->basisstat.primal_unbounded || (p_mpq->lp->basisstat.dual_infeasible && p_mpq->lp->basisstat.primal_feasible))
     *status = QS_LP_UNBOUNDED;
   else
     *status = QS_LP_UNSOLVED;
