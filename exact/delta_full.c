@@ -189,7 +189,7 @@ static int QSdelta_full_basis_status (int *status_type,
       *status_type = 1;
       goto CLEANUP;
     } else {
-      *status_type = 2;
+      *status_type = 0;
       goto CLEANUP;
     }
   }
