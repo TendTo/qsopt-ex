@@ -524,8 +524,13 @@ int QSdelta_full_solver (mpq_QSdata * p_mpq,
     p_mpf = 0;
   }
 
-  MESSAGE(msg_lvl, "Iteration limit reached");
-  *status = QS_LP_ITER_LIMIT;
+  // If we have gone all the way, with the last status being unbounded, then trust the unboundedness.
+  if (last_status == QS_LP_UNBOUNDED && *status == QS_LP_UNSOLVED) {
+    *status = QS_LP_UNBOUNDED;
+  } else {
+    MESSAGE(msg_lvl, "Iteration limit reached");
+    *status = QS_LP_ITER_LIMIT;
+  }
 
 CLEANUP:
   dbl_EGlpNumFreeArray (x_dbl);
