@@ -158,6 +158,7 @@ static int QSdelta_full_basis_status (int *status_type,
                                       mpq_t *rhs_coefs,
                                       int *have_primal,
                                       int *have_dual,
+                                      unsigned precision,
                                       delta_full_callback_t delta_callback,
                                       void *callback_data)
 {
@@ -289,7 +290,7 @@ static int QSdelta_full_basis_status (int *status_type,
       }
       else if (NULL != delta_callback)
       {
-        delta_callback (p_mpq, x, y, obj_lo, obj_up, diff, delta, callback_data);
+        delta_callback (p_mpq, x, y, obj_lo, obj_up, diff, delta, precision, callback_data);
       }
     }
   }
@@ -333,6 +334,7 @@ int QSdelta_full_solver (mpq_QSdata * p_mpq,
                          QSbasis * const ebasis,
                          int simplexalgo,
                          int *status,
+                         unsigned * last_precision,
                          delta_full_callback_t delta_callback,
                          void *callback_data)
 {
@@ -340,6 +342,7 @@ int QSdelta_full_solver (mpq_QSdata * p_mpq,
   int last_status = 0, last_iter = 0;
   QSbasis *basis = 0;
   unsigned precision = EGLPNUM_PRECISION;
+  if (last_precision) *last_precision = sizeof(double) * 8;
   int rval = 0,
     it = QS_EXACT_MAX_ITER;
   dbl_QSdata *p_dbl = 0;
@@ -406,7 +409,7 @@ int QSdelta_full_solver (mpq_QSdata * p_mpq,
     int status_type = 0;
     EGcallD (QSdelta_full_basis_status (&status_type, 1, p_mpq, status, basis, msg_lvl,
                                         delta, x, y, obj_lo, obj_up, obj_coefs, rhs_coefs,
-                                        &have_primal, &have_dual,
+                                        &have_primal, &have_dual, sizeof(double) * 8,
                                         delta_callback, callback_data));
     MESSAGE(msg_lvl, "QSdelta_full_basis_status returned with status_type = %d, *status = %d",
             status_type, *status);
@@ -437,6 +440,7 @@ int QSdelta_full_solver (mpq_QSdata * p_mpq,
   /* try with multiple precision floating points */
   for (; it--; precision = (unsigned) (precision * 1.5))
   {
+    if (last_precision) *last_precision = precision;
     QSexact_set_precision (precision);
     if (p_mpq->simplex_display || DEBUG >= __QS_SB_VERB)
     {
@@ -506,7 +510,7 @@ int QSdelta_full_solver (mpq_QSdata * p_mpq,
       int status_type = 0;
       EGcallD (QSdelta_full_basis_status (&status_type, 0, p_mpq, status, basis, msg_lvl,
                                           delta, x, y, obj_lo, obj_up, obj_coefs, rhs_coefs,
-                                          &have_primal, &have_dual,
+                                          &have_primal, &have_dual, precision,
                                           delta_callback, callback_data));
       MESSAGE(msg_lvl, "QSdelta_full_basis_status returned with status_type = %d, *status = %d",
               status_type, *status);

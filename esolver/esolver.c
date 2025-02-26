@@ -370,6 +370,7 @@ void partial_full_result (const mpq_QSdata * const p_mpq,
 												  const mpq_t obj_up,
 												  const mpq_t diff,
 												  const mpq_t delta,
+												  unsigned precision,
 												  void *data)
 {
 	ILLutil_timer *p_timer_solve = (ILLutil_timer *) data;
@@ -505,7 +506,7 @@ int main (int ac,
 		rval = QSexact_solver (p_mpq, x_mpq, y_mpq, basis, simplexalgo, &status);
 		break;
 	case ALGO_DELTA_OPT:
-		rval = QSdelta_full_solver (p_mpq, delta, x_mpq, y_mpq, obj_lo, obj_up, basis, simplexalgo, &status,
+		rval = QSdelta_full_solver (p_mpq, delta, x_mpq, y_mpq, obj_lo, obj_up, basis, simplexalgo, &status, NULL,
 																continuous_output ? partial_full_result : NULL,
 																print_times ? &timer_solve : NULL);
 		mpq_sub (delta, obj_up, obj_lo);

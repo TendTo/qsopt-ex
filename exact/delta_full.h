@@ -19,6 +19,7 @@ typedef void (*delta_full_callback_t)(const mpq_QSdata * const p_mpq,
                                       const mpq_t obj_up,
                                       const mpq_t diff,
                                       const mpq_t delta,
+                                      unsigned precision,
                                       void *data);
 
 /* ========================================================================= */
@@ -41,6 +42,9 @@ typedef void (*delta_full_callback_t)(const mpq_QSdata * const p_mpq,
  * @param status pointer to the integer where we will return the status of the
  * problem, either optimal, delta-optimal, unbounded, or infeasible (we could
  * also return time out).
+ * @param last_precision if not null, will be set to the precision (bits) 
+ * used to obtain the result. Precisions start at 64 bits (double) and
+ * increase at each precision boost iteration.
  * @param delta_callback if not null, will be called if a delta-satisfying
  * result is found for some value greater than delta.
  * @param callback_data additional parameter to be passed to delta_callback.
@@ -54,6 +58,7 @@ int QSdelta_full_solver (mpq_QSdata * p_mpq,
                          QSbasis * const ebasis,
                          int simplexalgo,
                          int *status,
+                         unsigned * last_precision,
                          delta_full_callback_t delta_callback,
                          void *callback_data);
 
