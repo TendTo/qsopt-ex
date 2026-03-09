@@ -59,7 +59,7 @@
 /** @brief if non-zero, use slab-pool allocator for GMP, otherwise, use malloc/
  * realloc / free, */
 #ifndef EG_LPNUM_MEMSLAB
-#define EG_LPNUM_MEMSLAB 1
+#define EG_LPNUM_MEMSLAB 0
 #endif
 /* ========================================================================= */
 /** @brief type-dependant constants and helper numbers @{ */
