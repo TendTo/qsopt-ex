@@ -231,6 +231,7 @@ CLEANUP:
 /* ========================================================================= */
 /** @brief Given an mpq_QSdata problem, solve the corresponding
  * delta-feasibility problem exactly.
+ * @pre the objective function in `p_mpq` must be set to zero
  * @param p_mpq problem for which to determine delta-feasibility exactly.
  * @param delta the delta to use for determining delta-feasibility; the maximum
  * perturbation of RHS/bounds required to make a delta-feasible solution
@@ -251,7 +252,7 @@ CLEANUP:
  * result is found for some value greater than delta.
  * @param callback_data additional parameter to be passed to delta_callback.
  * @return zero on success, non-zero otherwise. */
-int QSdelta_solver (mpq_QSdata * p_orig,
+int QSdelta_solver (mpq_QSdata * p_mpq,
                     mpq_t delta,
                     mpq_t * const x,
                     mpq_t * const y,
@@ -267,7 +268,6 @@ int QSdelta_solver (mpq_QSdata * p_orig,
   unsigned precision = EGLPNUM_PRECISION;
   int rval = 0,
     it = QS_EXACT_MAX_ITER;
-  mpq_QSdata *p_mpq = 0;
   dbl_QSdata *p_dbl = 0;
   mpf_QSdata *p_mpf = 0;
   double *x_dbl = 0,
@@ -277,11 +277,10 @@ int QSdelta_solver (mpq_QSdata * p_orig,
    *y_mpf = 0;
   mpq_t last_infeas;
   mpq_init (last_infeas);
-  int const msg_lvl = __QS_SB_VERB <= DEBUG ? 0: (1 - p_orig->simplex_display) * 10000;
+  int const msg_lvl = __QS_SB_VERB <= DEBUG ? 0: (1 - p_mpq->simplex_display) * 10000;
   *status = QS_LP_UNSOLVED;
-  p_mpq = mpq_QScopy_prob (p_orig, "mpq_feas_problem");
-  /* set the objective function to zero (in the copy) */
-  EGcallD (mpq_QSclear_obj (p_mpq));
+  /* set the objective function to zero (in the copy) (enforced in the preconditions) */
+  // EGcallD (mpq_QSclear_obj (p_mpq));
   /* save the problem if we are really debugging */
   if(DEBUG >= __QS_SB_VERB)
   {
