@@ -207,7 +207,7 @@ static int QSdelta_full_basis_status (int *status_type,
     if (QS_LP_OPTIMAL == *status || p_mpq->lp->probstat.primal_feasible)
     {
       assert (p_mpq->lp->basisstat.primal_feasible);
-      EGcallD (QSdelta_copy_x (x, p_mpq));
+      EGcallD (QSdelta_copy_x (x, NULL, p_mpq));
       mpq_t primal_obj;
       mpq_init (primal_obj);
       my_inner_prod (primal_obj, obj_coefs, x, p_mpq->qslp->nstruct);

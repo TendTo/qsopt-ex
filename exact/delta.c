@@ -25,32 +25,8 @@
 #include "simplex_mpq.h"
 #include "dump.h"
 
-/* ========================================================================= */
-/** @brief print into screen (if enable) a message indicating that we have
- * successfully prove infeasibility, and save (if y is non
- * NULL ) the dual ray solution provided in y_mpq.
- * @param p_mpq the problem data.
- * @param y where to store the optimal dual solution (if not null).
- * @param y_mpq  the optimal dual solution.
- * */
-/* ========================================================================= */
-static void infeasible_output (mpq_QSdata * p_mpq,
-                               mpq_t * const y,
-                               mpq_t * y_mpq)
-{
-  if (p_mpq->simplex_display)
-  {
-    QSlog("Problem is infeasible");
-  }
-  if (y)
-  {
-    unsigned sz = __EGlpNumArraySize (y_mpq);
-    while (sz--)
-      mpq_set (y[sz], y_mpq[sz]);
-  }
-}
 
-int QSdelta_copy_x (mpq_t * const x, const mpq_QSdata * p_mpq)
+int QSdelta_copy_x (mpq_t * const x, mpq_t * y, const mpq_QSdata * p_mpq)
 {
   int rval = 0;
   int i, col;
@@ -88,6 +64,13 @@ int QSdelta_copy_x (mpq_t * const x, const mpq_QSdata * p_mpq)
   {
     mpq_EGlpNumCopy (x[i], tempx[qslp->structmap[i]]);
   }
+  if (y && lp && lp->pIpiz)
+  {
+    for (i = 0; i < qslp->nrows; i++)
+    {
+      mpq_EGlpNumCopy (y[i], lp->pIpiz[i]);
+    }
+  }
 
 CLEANUP:
 
@@ -98,19 +81,42 @@ CLEANUP:
 
 /* ========================================================================= */
 /** @brief print into screen (if enable) a message indicating that we have
- * successfully prove feasibility.
+ * successfully proven infeasibility.
+ * @param p_mpq the problem data.
+ * */
+/* ========================================================================= */
+static int infeasible_output (mpq_QSdata * p_mpq,
+                              mpq_t * const x, 
+                             mpq_t * const y)
+{
+  int rval = 0;
+
+  if (p_mpq->simplex_display)
+    QSlog("Problem is infeasible");
+  if (x)
+    EGcallD(QSdelta_copy_x (x, y, p_mpq));
+
+CLEANUP:
+
+  EG_RETURN (rval);
+}
+
+/* ========================================================================= */
+/** @brief print into screen (if enable) a message indicating that we have
+ * successfully proven feasibility.
  * @param p_mpq the problem data.
  * */
 /* ========================================================================= */
 static int feasible_output (mpq_QSdata * p_mpq,
-                            mpq_t * const x)
+                            mpq_t * const x, 
+                            mpq_t * const y)
 {
   int rval = 0;
 
   if (p_mpq->simplex_display)
     QSlog("Problem is feasible");
   if (x)
-    EGcallD(QSdelta_copy_x (x, p_mpq));
+    EGcallD(QSdelta_copy_x (x, y, p_mpq));
 
 CLEANUP:
 
@@ -131,6 +137,7 @@ static int check_delta_feas (mpq_QSdata const * p_mpq,
                              mpq_t delta,
                              int *status,
                              mpq_t * const x,
+                             mpq_t * const y,
                              delta_callback_t delta_callback,
                              mpq_t last_infeas,
                              void *callback_data)
@@ -212,7 +219,7 @@ static int check_delta_feas (mpq_QSdata const * p_mpq,
   }
 
   if (x && (QS_LP_FEASIBLE == *status || QS_LP_DELTA_FEASIBLE == *status))
-    EGcallD(QSdelta_copy_x (x, p_mpq));
+    EGcallD(QSdelta_copy_x (x, y, p_mpq));
 
   if (QS_LP_FEASIBLE != *status && QS_LP_DELTA_FEASIBLE != *status)
   {
@@ -272,7 +279,6 @@ int QSdelta_solver (mpq_QSdata * p_mpq,
   mpf_QSdata *p_mpf = 0;
   double *x_dbl = 0,
    *y_dbl = 0;
-  mpq_t *y_mpq = 0;
   mpf_t *x_mpf = 0,
    *y_mpf = 0;
   mpq_t last_infeas;
@@ -318,24 +324,17 @@ int QSdelta_solver (mpq_QSdata * p_mpq,
     EGcallD(QSdelta_basis_status (p_mpq, status, basis, msg_lvl, &simplexalgo));
     if (QS_LP_INFEASIBLE == *status)
     {
-      y_mpq = mpq_EGlpNumAllocArray (p_mpq->qslp->nrows);
-      if (mpq_QSget_infeas_array (p_mpq, y_mpq))
-      {
-        MESSAGE(p_mpq->simplex_display ? 0 : __QS_SB_VERB, "double approximation"
-                " failed, code %d, continuing in extended precision", rval);
-        goto MPF_PRECISION;
-      }
-      infeasible_output (p_mpq, y, y_mpq);
+      infeasible_output (p_mpq, x, y);
       goto CLEANUP;
     }
     else if (QS_LP_FEASIBLE == *status)
     {
-      EGcallD(feasible_output (p_mpq, x));
+      EGcallD(feasible_output (p_mpq, x, y));
       mpq_EGlpNumCopy (delta, mpq_zeroLpNum);
       goto CLEANUP;
     }
     /* check for delta-feasibility */
-    EGcallD(check_delta_feas (p_mpq, delta, status, x, delta_callback, last_infeas, callback_data));
+    EGcallD(check_delta_feas (p_mpq, delta, status, x, y, delta_callback, last_infeas, callback_data));
     if (QS_LP_FEASIBLE == *status || QS_LP_DELTA_FEASIBLE == *status)
       goto CLEANUP;
   }
@@ -347,7 +346,7 @@ int QSdelta_solver (mpq_QSdata * p_mpq,
   /* if we reach this point, then we have to keep going, we use the previous
    * basis ONLY if the previous precision thinks that it has the optimal
    * solution, otherwise we start from scratch. */
-  precision = 128;
+  precision = EGLPNUM_PRECISION;
   MPF_PRECISION:
   dbl_QSfree_prob (p_dbl);
   p_dbl = 0;
@@ -424,20 +423,17 @@ int QSdelta_solver (mpq_QSdata * p_mpq,
       EGcallD(QSdelta_basis_status (p_mpq, status, basis, msg_lvl, &simplexalgo));
       if (QS_LP_INFEASIBLE == *status)
       {
-        mpq_EGlpNumFreeArray (y_mpq);
-        y_mpq = mpq_EGlpNumAllocArray (p_mpq->qslp->nrows);
-        EGcallD(mpq_QSget_infeas_array (p_mpq, y_mpq));
-        infeasible_output (p_mpq, y, y_mpq);
+        infeasible_output (p_mpq, x, y);
         goto CLEANUP;
       }
       else if (QS_LP_FEASIBLE == *status)
       {
-        EGcallD(feasible_output (p_mpq, x));
+        EGcallD(feasible_output (p_mpq, x, y));
         mpq_EGlpNumCopy (delta, mpq_zeroLpNum);
         goto CLEANUP;
       }
       /* check for delta-feasibility */
-      EGcallD(check_delta_feas (p_mpq, delta, status, x, delta_callback, last_infeas, callback_data));
+      EGcallD(check_delta_feas (p_mpq, delta, status, x, y, delta_callback, last_infeas, callback_data));
       if (QS_LP_FEASIBLE == *status || QS_LP_DELTA_FEASIBLE == *status)
         goto CLEANUP;
     }
@@ -454,7 +450,6 @@ CLEANUP:
   mpq_clear (last_infeas);
   dbl_EGlpNumFreeArray (x_dbl);
   dbl_EGlpNumFreeArray (y_dbl);
-  mpq_EGlpNumFreeArray (y_mpq);
   mpf_EGlpNumFreeArray (x_mpf);
   mpf_EGlpNumFreeArray (y_mpf);
   if (ebasis && basis)

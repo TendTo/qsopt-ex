@@ -51,6 +51,6 @@ int QSdelta_solver (mpq_QSdata * p_orig,
  * @param p_mpq the problem data.
  * */
 /* ========================================================================= */
-int QSdelta_copy_x (mpq_t * const x, const mpq_QSdata * p_mpq);
+int QSdelta_copy_x (mpq_t * const x, mpq_t * y, const mpq_QSdata * p_mpq);
 
 #endif
