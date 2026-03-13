@@ -238,7 +238,6 @@ CLEANUP:
 /* ========================================================================= */
 /** @brief Given an mpq_QSdata problem, solve the corresponding
  * delta-feasibility problem exactly.
- * @pre the objective function in `p_mpq` must be set to zero
  * @param p_mpq problem for which to determine delta-feasibility exactly.
  * @param delta the delta to use for determining delta-feasibility; the maximum
  * perturbation of RHS/bounds required to make a delta-feasible solution
@@ -250,6 +249,8 @@ CLEANUP:
  * problem (if infeasibility established).
  * @param ebasis if not null, use the given basis to start the iteration of
  * simplex, and store here the final basis (where applicable).
+ * @param precision pointer to the variable where we will store the actual precision used to solve the problem; 
+ * can be null, in which case we will not report the actual precision used.
  * @param simplexalgo whether to use primal or dual simplex while solving the
  * delta-feasibility problem.
  * @param status pointer to the integer where we will return the status of the
@@ -264,6 +265,7 @@ int QSdelta_solver (mpq_QSdata * p_mpq,
                     mpq_t * const x,
                     mpq_t * const y,
                     QSbasis * const ebasis,
+                    unsigned * precision,
                     int simplexalgo,
                     int *status,
                     delta_callback_t delta_callback,
@@ -272,7 +274,9 @@ int QSdelta_solver (mpq_QSdata * p_mpq,
   /* local variables */
   int last_status = 0, last_iter = 0;
   QSbasis *basis = 0;
-  unsigned precision = EGLPNUM_PRECISION;
+  unsigned fallback_precision;
+  if (!precision) precision = &fallback_precision;
+  *precision = sizeof(double) * 8;
   int rval = 0,
     it = QS_EXACT_MAX_ITER;
   dbl_QSdata *p_dbl = 0;
@@ -346,17 +350,17 @@ int QSdelta_solver (mpq_QSdata * p_mpq,
   /* if we reach this point, then we have to keep going, we use the previous
    * basis ONLY if the previous precision thinks that it has the optimal
    * solution, otherwise we start from scratch. */
-  precision = EGLPNUM_PRECISION;
+  *precision = EGLPNUM_PRECISION;
   MPF_PRECISION:
   dbl_QSfree_prob (p_dbl);
   p_dbl = 0;
   /* try with multiple precision floating points */
-  for (; it--; precision = (unsigned) (precision * 1.5))
+  for (; it--; *precision = (unsigned) (*precision * 1.5))
   {
-    QSexact_set_precision (precision);
+    QSexact_set_precision (*precision);
     if (p_mpq->simplex_display || DEBUG >= __QS_SB_VERB)
     {
-      QSlog("Trying mpf with %u bits", precision);
+      QSlog("Trying mpf with %u bits", *precision);
     }
     p_mpf = QScopy_prob_mpq_mpf (p_mpq, "mpf_problem");
     if(DEBUG >= __QS_SB_VERB)
@@ -403,7 +407,7 @@ int QSdelta_solver (mpq_QSdata * p_mpq,
       if (p_mpq->simplex_display || DEBUG >= __QS_SB_VERB)
       {
         QSlog("mpf_%u precision failed, error code %d, continuing with "
-                    "next precision", precision, rval);
+                    "next precision", *precision, rval);
        }
       goto NEXT_PRECISION;
     }

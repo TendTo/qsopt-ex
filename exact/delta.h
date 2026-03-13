@@ -24,6 +24,8 @@
  * problem (if infeasibility established).
  * @param ebasis if not null, use the given basis to start the iteration of
  * simplex, and store here the final basis (where applicable).
+ * @param precision pointer to the variable where we will store the actual precision used to solve the problem; 
+ * can be null, in which case we will not report the actual precision used.
  * @param simplexalgo whether to use primal or dual simplex while solving the
  * delta-feasibility problem.
  * @param status pointer to the integer where we will return the status of the
@@ -38,6 +40,7 @@ int QSdelta_solver (mpq_QSdata * p_orig,
                     mpq_t * const x,
                     mpq_t * const y,
                     QSbasis * const ebasis,
+                    unsigned * precision,
                     int simplexalgo,
                     int *status,
                     delta_callback_t delta_callback,
