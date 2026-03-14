@@ -404,6 +404,7 @@ void partial_full_result (const mpq_QSdata * const p_mpq,
 int main (int ac,
 					char **av)
 {
+	unsigned actual_precision = 0;
 	int rval = 0,
 	  status = 0;
 	mpq_QSdata *p_mpq = 0;
@@ -512,7 +513,7 @@ int main (int ac,
 		mpq_sub (delta, obj_up, obj_lo);
 		break;
 	case ALGO_DELTA_FEAS_PHASE_1:
-		rval = QSdelta_solver (p_mpq, delta, x_mpq, y_mpq, basis, simplexalgo, &status,
+		rval = QSdelta_solver (p_mpq, delta, x_mpq, y_mpq, basis, &actual_precision, simplexalgo, &status,
 													 continuous_output ? partial_result : NULL,
 													 print_times ? &timer_solve : NULL);
 		break;
@@ -558,6 +559,8 @@ int main (int ac,
 		EGioPrintf (out_f, "status = UNDEFINED");
 		break;
 	}
+	if (actual_precision)
+		EGioPrintf (out_f, " (actual precision used: %u bits)", actual_precision);
 	if (print_times)
 		EGioPrintf (out_f, " after %.17g seconds", timer_solve.cum_zeit);
 	EGioPrintf (out_f, "\n");
