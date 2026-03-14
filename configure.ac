@@ -40,7 +40,7 @@ AC_PROG_LIBTOOL
 ### Check for debug mode
 AC_ARG_ENABLE([debug],
 	[AS_HELP_STRING([--enable-debug], [enable debug mode @<:@default=yes@:>@])],
-	[enable_debug=$enable])
+	[enable_debug=$enableval])
 AS_IF([test "x$enable_debug" != xno], [
 	AC_SUBST([ENABLE_DEBUG],[1])
 	AC_DEFINE([DEBUG], [1], [Enable debug mode])
