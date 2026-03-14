@@ -34,7 +34,7 @@
 #else
 /* the optimizer will take care of this */
 #define ILL_IFTRACE        if (0) QSlog
-#define ILL_IFTRACE        if (0) QSlog
+#define ILL_IFTRACE2       if (0) QSlog
 #define ILL_IFDOTRACE      if (0)
 #endif
 
