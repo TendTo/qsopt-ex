@@ -380,13 +380,13 @@ int QSdelta_solver (mpq_QSdata * p_mpq,
       {
         EGcallD(mpf_QSload_basis (p_mpf, basis));
         mpf_QSfree_basis (basis);
-        simplexalgo = DUAL_SIMPLEX;
+        simplexalgo = PRIMAL_SIMPLEX;
         basis = 0;
       }
       else if (ebasis && ebasis->nstruct)
       {
         mpf_QSload_basis (p_mpf, ebasis);
-        simplexalgo = DUAL_SIMPLEX;
+        simplexalgo = PRIMAL_SIMPLEX;
       }
     }
     else
