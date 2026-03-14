@@ -350,7 +350,7 @@ int QSdelta_solver (mpq_QSdata * p_mpq,
   /* if we reach this point, then we have to keep going, we use the previous
    * basis ONLY if the previous precision thinks that it has the optimal
    * solution, otherwise we start from scratch. */
-  *precision = EGLPNUM_PRECISION;
+  *precision = 128;
   MPF_PRECISION:
   dbl_QSfree_prob (p_dbl);
   p_dbl = 0;
