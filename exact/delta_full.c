@@ -190,6 +190,7 @@ static int QSdelta_full_basis_status (int *status_type,
       *status_type = 1;
       goto CLEANUP;
     } else {
+      // TODO: If we know it is not infeasible, can't we use the current solution to capture a possible delta-optimal solution?
       *status_type = 0;
       goto CLEANUP;
     }
@@ -213,6 +214,9 @@ static int QSdelta_full_basis_status (int *status_type,
       my_inner_prod (primal_obj, obj_coefs, x, p_mpq->qslp->nstruct);
 #ifndef NDEBUG
       mpq_ILLfct_compute_pobj (p_mpq->lp);
+      if (p_mpq->qslp->objsense == QS_MAX) {
+        mpq_neg(p_mpq->lp->pobjval, p_mpq->lp->pobjval);
+      }
       if (mpq_cmp (p_mpq->lp->pobjval, primal_obj) != 0)
       {
         MESSAGE (msg_lvl, "Oops: p_mpq->lp->pobjval = %lf but primal_obj = %lf",
@@ -240,6 +244,9 @@ static int QSdelta_full_basis_status (int *status_type,
       assert (p_mpq->lp->basisstat.dual_feasible);
       EGcallD (copy_y (y, p_mpq));
       mpq_ILLfct_compute_dobj (p_mpq->lp);
+      if (p_mpq->qslp->objsense == QS_MAX) {
+        mpq_neg(p_mpq->lp->dobjval, p_mpq->lp->dobjval);
+      }
       if (!*have_dual ||
           (p_mpq->qslp->objsense == QS_MIN
             ? mpq_cmp (p_mpq->lp->dobjval, obj_lo) > 0
