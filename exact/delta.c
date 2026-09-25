@@ -422,6 +422,7 @@ int QSdelta_solver (mpq_QSdata * p_mpq,
     /* deal with the problem depending on status we got from our optimizer */
     if (QS_LP_OPTIMAL == *status || QS_LP_UNBOUNDED == *status || QS_LP_INFEASIBLE == *status)
     {
+      mpf_QSfree_basis (basis);
       basis = mpf_QSget_basis (p_mpf);
       MESSAGE (msg_lvl, "Basis hash is 0x%016lX", QSexact_basis_hash(basis));
       EGcallD(QSdelta_basis_status (p_mpq, status, basis, msg_lvl, &simplexalgo));
