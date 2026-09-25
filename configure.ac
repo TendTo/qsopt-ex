@@ -44,10 +44,12 @@ AC_ARG_ENABLE([debug],
 AS_IF([test "x$enable_debug" != xno], [
 	AC_SUBST([ENABLE_DEBUG],[1])
 	AC_DEFINE([DEBUG], [1], [Enable debug mode])
+	CFLAGS="-O0 -ggdb"
 ], [
   AC_SUBST([ENABLE_DEBUG],[0])
 	AC_DEFINE([DEBUG], [0], [Disable debug mode])
 	AC_DEFINE([NDEBUG], [1], [Enable no-debug mode])
+	CFLAGS="-O3"
 ])
 
 ### Check for verbosity level
