@@ -28,6 +28,7 @@
 #include <stdint.h>
 
 #include <gmp.h>
+#include "rationals.h"
 
 #include "qs_config.h"
 #include "logging-private.h"
@@ -75,6 +76,10 @@ mpf_t __zeroLpNum_mpf__;
 mpf_t __MaxLpNum_mpf__;
 mpf_t __MinLpNum_mpf__;
 mpf_t __oneLpNum_mpf__;
+rat_t __zeroLpNum_rat__;
+rat_t __oneLpNum_rat__;
+rat_t __MaxLpNum_rat__;
+rat_t __MinLpNum_rat__;
 mpf_t mpf_eps;
 unsigned long int EGLPNUM_PRECISION = 128;
 
@@ -82,6 +87,7 @@ unsigned long int EGLPNUM_PRECISION = 128;
 
 /* ========================================================================= */
 static int __EGlpNum_setup=0;
+
 /* ========================================================================= */
 /** @name data to handle memory allocations within gmp */
 /** @{*/
@@ -272,8 +278,9 @@ void EGlpNumStart(void)
 		}
 		mp_set_memory_functions(__EGgmp_malloc, __EGgmp_realloc, __EGgmp_free);
 	}
-
 	mpf_set_default_prec (EGLPNUM_PRECISION);
+	init_rationals();
+
 	mpz_init (__zeroLpNum_mpz__);
 	mpz_init (__oneLpNum_mpz__);
 	mpz_init (__MaxLpNum_mpz__);
@@ -304,6 +311,13 @@ void EGlpNumStart(void)
 	mpq_init (__oneLpNum_mpq__);
 	mpq_set_ui (__oneLpNum_mpq__, (unsigned long int)1, (unsigned long int)1);
 	mpq_set_ui (__zeroLpNum_mpq__, (unsigned long int)0, (unsigned long int)1);
+	rat_init(__zeroLpNum_rat__);
+	rat_init(__oneLpNum_rat__);
+	rat_init(__MaxLpNum_rat__);
+	rat_init(__MinLpNum_rat__);
+	rat_set_one(__oneLpNum_rat__);
+	rat_set_mpq(__MaxLpNum_rat__,__MaxLpNum_mpq__);
+	rat_set_mpq(__MinLpNum_rat__,__MinLpNum_mpq__);
 	__EGlpNum_setup=1;
 }
 
@@ -339,6 +353,12 @@ void EGlpNumClear(void)
 	mpz_clear (__oneLpNum_mpz__);
 	mpz_clear (__MaxLpNum_mpz__);
 	mpz_clear (__MinLpNum_mpz__);
+	rat_clear(__zeroLpNum_rat__);
+	rat_clear(__oneLpNum_rat__);
+	rat_clear(__MaxLpNum_rat__);
+	rat_clear(__MinLpNum_rat__);
+
+	cleanup_rationals();
 	if(EG_LPNUM_MEMSLAB)
 	{
 		mp_set_memory_functions(0, 0, 0);
@@ -644,6 +664,17 @@ void mpq_EGlpNumSet (mpq_t var,
 		mpq_div_2exp (var, var, (unsigned long int) (-__lexp));
 	return;
 }
+
+void rat_EGlpNumSet (rat_t var,
+										 double const dbl)
+{
+	mpq_t tmp;
+	mpq_init(tmp);
+	mpq_EGlpNumSet (tmp, dbl);
+	rat_set_mpq_prenormalize(var,tmp);
+	mpq_clear(tmp);
+}
+
 
 /* ========================================================================= */
 int mpz_EGlpNumReadStr (mpz_t var,

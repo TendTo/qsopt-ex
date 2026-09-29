@@ -30,13 +30,16 @@
 #include "eg_lpnum.dbl.h"
 #include "eg_lpnum.mpq.h"
 #include "eg_lpnum.mpf.h"
+#include "eg_lpnum.rat.h"
 #include "lpdata_dbl.h"
 #include "lpdata_mpq.h"
 #include "lpdata_mpf.h"
+#include "lpdata_rat.h"
 #include "qsopt_mpf.h" /* mpf_QSset_precision */
 #include "qstruct_dbl.h"
 #include "qstruct_mpq.h"
 #include "qstruct_mpf.h"
+#include "qstruct_rat.h"
 
 /* ========================================================================= */
 /** @defgroup Esolver Esolver
@@ -101,6 +104,16 @@ dbl_QSdata *QScopy_prob_mpq_dbl (mpq_QSdata * p,
 /** @brief Copy an exact problem (mpq_QSdata) to a regular double version of the
  * problem (dbl_QSdata) */
 mpf_QSdata *QScopy_prob_mpq_mpf (mpq_QSdata * p,
+																 const char *newname);
+
+/** @brief Copy an exact problem (mpq_QSdata) to a regular double version of the
+ * problem (dbl_QSdata) */
+dbl_QSdata *QScopy_prob_rat_dbl (rat_QSdata * p,
+																 const char *newname);
+
+/** @brief Copy an exact problem (mpq_QSdata) to a regular double version of the
+ * problem (dbl_QSdata) */
+mpf_QSdata *QScopy_prob_rat_mpf (rat_QSdata * p,
 																 const char *newname);
 
 /* ========================================================================= */
@@ -236,9 +249,81 @@ int QSexact_infeasible_test (mpq_QSdata * p,
 			mpq_set(__lres[__lsz],mpq_ILL_MAXDOUBLE);\
 		else if(mpf_cmp(__larray[__lsz],mpf_ILL_MINDOUBLE)==0)\
 			mpq_set(__lres[__lsz],mpq_ILL_MINDOUBLE);\
-		mpq_set_f(__lres[__lsz],__larray[__lsz]);\
+		else mpq_set_f(__lres[__lsz],__larray[__lsz]);\
 	}\
 	__lres;})
+
+/** @brief create a copy of a mpq_t array into a double array.
+ * @param array mpq_t array from where we will create the values. */
+#define QScopy_array_rat_dbl(array) ({ \
+	rat_t*__larray = (array);\
+	register unsigned __lsz = __EGlpNumArraySize(__larray);\
+	double*__lres = dbl_EGlpNumAllocArray(__lsz);\
+	while(__lsz--)\
+	{\
+		if(rat_eq(__larray[__lsz],rat_ILL_MAXDOUBLE))\
+			__lres[__lsz] = dbl_ILL_MAXDOUBLE;\
+		else if(rat_eq(__larray[__lsz],rat_ILL_MINDOUBLE))\
+			__lres[__lsz] = dbl_ILL_MINDOUBLE;\
+		else __lres[__lsz] = rat_to_d(__larray[__lsz]);\
+	}\
+	__lres;})
+
+/** @brief create a copy of a mpq_t array into a mpf_t array.
+ * @param array rat_t array from where we will create the values. */
+#define QScopy_array_rat_mpf(array) ({ \
+	rat_t*__larray = (array);\
+	register unsigned __lsz = __EGlpNumArraySize(__larray);\
+	mpf_t*__lres = mpf_EGlpNumAllocArray(__lsz);\
+	while(__lsz--)\
+	{\
+		if(rat_eq(__larray[__lsz],rat_ILL_MAXDOUBLE))\
+			mpf_set(__lres[__lsz], mpf_ILL_MAXDOUBLE);\
+		else if(rat_eq(__larray[__lsz],rat_ILL_MINDOUBLE))\
+			mpf_set(__lres[__lsz], mpf_ILL_MINDOUBLE);\
+		else if (rat_is_gmp(__larray[__lsz])) \
+			mpf_set_q(__lres[__lsz], rat_get_mpq(__larray[__lsz]));\
+		else mpf_set_rat(__lres[__lsz], __larray[__lsz]);\
+	}\
+	__lres;})
+
+
+/* ========================================================================= */
+/** @brief create a copy of a double array into mpq_t array.
+ * @param array original array of double values (note that this array must have
+ * been allocated with dbl_EGlpNumAllocArray for this function to work). */
+#define QScopy_array_dbl_rat(array) ({ \
+	double*__larray = (array);\
+	register unsigned __lsz = __EGlpNumArraySize(__larray);\
+	rat_t*__lres = rat_EGlpNumAllocArray(__lsz);\
+	while(__lsz--)\
+	{\
+		if(__larray[__lsz] == dbl_ILL_MAXDOUBLE)\
+			rat_set(__lres[__lsz],rat_ILL_MAXDOUBLE);\
+		else if(__larray[__lsz] == dbl_ILL_MINDOUBLE)\
+			rat_set(__lres[__lsz],rat_ILL_MINDOUBLE);\
+		else rat_EGlpNumSet(__lres[__lsz],__larray[__lsz]);\
+	}\
+	__lres;})
+
+/* ========================================================================= */
+/** @brief create a copy of a mpf_t array into mpq_t array.
+ * @param array original array of double values (note that this array must have
+ * been allocated with __EGlpNumAllocArray for this function to work). */
+#define QScopy_array_mpf_rat(array) ({ \
+	mpf_t*__larray = (array);\
+	register unsigned __lsz = __EGlpNumArraySize(__larray);\
+	rat_t*__lres = rat_EGlpNumAllocArray(__lsz);\
+	while(__lsz--)\
+	{\
+		if(mpf_cmp(__larray[__lsz],mpf_ILL_MAXDOUBLE)==0)\
+			rat_set(__lres[__lsz],rat_ILL_MAXDOUBLE);\
+		else if(mpf_cmp(__larray[__lsz],mpf_ILL_MINDOUBLE)==0)\
+			rat_set(__lres[__lsz],rat_ILL_MINDOUBLE);\
+		else rat_set_mpf(__lres[__lsz],__larray[__lsz]);\
+	}\
+	__lres;})
+
 
 /* ========================================================================= */
 /** @brief Write a given row from the LP into the given stream, in exact
@@ -347,6 +432,13 @@ typedef void (*delta_callback_t)(mpq_QSdata const * p_mpq,
 																 mpq_t * const x,
 																 const mpq_t infeas,
 																 const mpq_t delta,
+																 void *data);
+/** @brief Callback to receive partial results from delta-complete methods.
+    (Used only within exact_delta.c and delta.c) */
+typedef void (*delta_callback_rat_t)(rat_QSdata const * p_rat,
+																 rat_t * const x,
+																 const rat_t infeas,
+																 const rat_t delta,
 																 void *data);
 
 /* ========================================================================= */

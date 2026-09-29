@@ -201,6 +201,7 @@ extern const mpz_t __MinLpNum_mpz__;
 #include "eg_lpnum.dbl.h"
 #include "eg_lpnum.mpq.h"
 #include "eg_lpnum.mpf.h"
+#include "eg_lpnum.rat.h"
 #include "eg_macros.h"
 #include "eg_mem.h"
 #include "eg_nummacros.h"

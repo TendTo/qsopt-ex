@@ -36,6 +36,7 @@ AC_PROG_CC
 AC_PROG_SED
 AC_PROG_LIBTOOL
 
+AC_C_BIGENDIAN
 
 ### Check for debug mode
 AC_ARG_ENABLE([debug],

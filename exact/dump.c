@@ -19,6 +19,7 @@
 #include "dump.h"
 
 #include "lib_mpq.h"
+#include "lib_rat.h"
 #include "logging-private.h"
 
 #include <assert.h>
@@ -189,5 +190,174 @@ int mpq_QSdump_basis (mpq_QSdata *p_mpq)
   }
 CLEANUP:
   mpq_EGlpNumFreeArray (row);
+  return rval;
+}
+
+void rat_QSdump_xbz (const rat_QSdata *p_rat)
+{
+  if (!p_rat->lp->xbz)
+  {
+    QSlog ("xbz is unset");
+    return;
+  }
+  assert (__EGlpNumArraySize (p_rat->lp->xbz) == p_rat->lp->nrows);
+  for (int i = 0; i < p_rat->lp->nrows; ++i)
+  {
+    QSlog ("%d: %g", p_rat->lp->baz[i], rat_to_d (p_rat->lp->xbz[i]));
+  }
+}
+
+void rat_QSdump_piz (const rat_QSdata *p_rat)
+{
+  if (!p_rat->lp->piz)
+  {
+    QSlog ("piz is unset");
+    return;
+  }
+  assert (__EGlpNumArraySize (p_rat->lp->piz) == p_rat->lp->nrows);
+  for (int i = 0; i < p_rat->lp->nrows; ++i)
+  {
+    if (rat_sgn (p_rat->lp->piz[i]) != 0)
+      QSlog ("%d: %g", i, rat_to_d (p_rat->lp->piz[i]));
+  }
+}
+
+void rat_QSdump_bz (const rat_QSdata *p_rat)
+{
+  if (!p_rat->lp->bz)
+  {
+    QSlog ("bz is unset");
+    return;
+  }
+  assert (__EGlpNumArraySize (p_rat->lp->bz) >= p_rat->lp->nrows);
+  for (int i = 0; i < p_rat->lp->nrows; ++i)
+  {
+    if (rat_sgn (p_rat->lp->bz[i]) != 0)
+      QSlog ("%d: %g", i, rat_to_d (p_rat->lp->bz[i]));
+  }
+}
+
+void rat_QSdump_xnbz (const rat_QSdata *p_rat)
+{
+  //if (!p_rat->lp->nbaz || !p_rat->lp->vstat || !p_rat->qslp->lower || !p_rat->qslp->upper)
+  if (!p_rat->lp->nbaz || !p_rat->lp->vstat || !p_rat->lp->lz || !p_rat->lp->uz)
+  {
+    QSlog ("Something needed to compute xnbz is unset");
+    return;
+  }
+  for (int i = 0; i < p_rat->lp->nnbasic; ++i)
+  {
+    int col = p_rat->lp->nbaz[i];
+    if (p_rat->lp->vstat[col] == STAT_LOWER)
+      QSlog ("%d: [%g", col, rat_to_d (p_rat->lp->lz[col]));
+    else if (p_rat->lp->vstat[col] == STAT_UPPER)
+      QSlog ("%d: %g]", col, rat_to_d (p_rat->lp->uz[col]));
+    else
+      QSlog ("%d: 0", col);
+  }
+}
+
+void rat_QSdump_bfeas (const rat_QSdata *p_rat)
+{
+  if (!p_rat->lp->bfeas)
+  {
+    QSlog ("bfeas is unset");
+    return;
+  }
+  for (int i = 0; i < p_rat->lp->nrows; ++i)
+  {
+    QSlog ("%d: %d", i, p_rat->lp->bfeas[i]);
+  }
+}
+
+void rat_QSdump_array (const rat_t *array, const char* tag)
+{
+  if (!array)
+  {
+    QSlog ("%s is unset", tag);
+    return;
+  }
+  unsigned sz = __EGlpNumArraySize (array);
+  for (int i = 0; i < sz; ++i)
+  {
+    QSlog ("%d: %g", i, rat_to_d (array[i]));
+  }
+}
+
+void rat_QSdump_prob_col (const rat_QSdata *p_rat, int index, int col, char type)
+{
+    if (type == 'S')
+    {
+      //QSlog_nonl ("{%p, %p}: ", p_rat->qslp->lower, p_rat->qslp->upper);
+      if (rat_cmp (p_rat->qslp->lower[col], rat_NINFTY) <= 0)
+        QSlog_nonl ("[-inf, ");
+      else
+        QSlog_nonl ("[%g, ", rat_to_d (p_rat->qslp->lower[col]));
+      if (rat_cmp (p_rat->qslp->upper[col], rat_INFTY) >= 0)
+        QSlog_nonl ("inf]: ");
+      else
+        QSlog_nonl ("%g]: ", rat_to_d (p_rat->qslp->upper[col]));
+    }
+    else if (type == 'L')
+    {
+      // N.B. needs index rather than col
+      QSlog_nonl ("(%c %g): ", p_rat->qslp->sense[index], rat_to_d (p_rat->qslp->rhs[index]));
+    }
+    for (int j = p_rat->qslp->A.matbeg[col];
+         j < p_rat->qslp->A.matbeg[col] + p_rat->qslp->A.matcnt[col];
+         ++j)
+    {
+      if (j > p_rat->qslp->A.matbeg[col])
+        QSlog_nonl (", ");
+      QSlog_nonl ("%d=%g", p_rat->qslp->A.matind[j],
+                           rat_to_d (p_rat->qslp->A.matval[j]));
+    }
+    QSlog_nonl ("\n");
+}
+
+void rat_QSdump_prob (const rat_QSdata *p_rat)
+{
+  QSlog ("rat_QSdump_prob:");
+  for (int i = 0; i < p_rat->qslp->nstruct; ++i)
+  {
+    int col = p_rat->qslp->structmap[i];
+    QSlog_nonl ("struct col %d (%d): ", i, col);
+    rat_QSdump_prob_col (p_rat, i, col, 'S');
+  }
+  for (int i = 0; i < p_rat->qslp->nrows; ++i)
+  {
+    int col = p_rat->qslp->rowmap[i];
+    QSlog_nonl ("logical col %d (%d): ", i, col);
+    rat_QSdump_prob_col (p_rat, i, col, 'L');
+  }
+}
+
+int rat_QSdump_basis (rat_QSdata *p_rat)
+{
+  QSlog ("rat_QSdump_basis:");
+  if (!p_rat->lp || p_rat->lp->basisid == -1)
+  {
+    QSlog ("No basis available");
+    return E_GENERAL_ERROR;
+  }
+  rat_t *row = rat_EGlpNumAllocArray (p_rat->qslp->nstruct + p_rat->qslp->nrows);
+  int rval = 0;
+  for (int i = 0; i < p_rat->qslp->nrows; ++i)
+  {
+    EGcallD (rat_ILLlib_tableau (p_rat->lp, i, 0, row));
+    QSlog_nonl ("row %d:", i);
+    for (int j = 0; j < p_rat->qslp->nstruct; ++j)
+    {
+      QSlog_nonl (" %g", rat_to_d (row[j]));
+    }
+    QSlog_nonl (" |");
+    for (int j = 0; j < p_rat->qslp->nrows; ++j)
+    {
+      QSlog_nonl (" %g", rat_to_d (row[p_rat->qslp->nstruct + j]));
+    }
+    QSlog_nonl ("\n");
+  }
+CLEANUP:
+  rat_EGlpNumFreeArray (row);
   return rval;
 }

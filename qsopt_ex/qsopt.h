@@ -28,6 +28,7 @@
 #include <stdio.h>
 
 #include <gmp.h>
+#include "rationals.h"
 
 #ifdef WIN32
 

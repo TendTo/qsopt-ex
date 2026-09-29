@@ -381,6 +381,237 @@ mpf_QSdata *QScopy_prob_mpq_mpf (mpq_QSdata * p,
 	return p2;
 }
 
+
+/* ========================================================================= */
+dbl_QSdata *QScopy_prob_rat_dbl (rat_QSdata * p,
+																 const char *newname)
+{
+	const int ncol = rat_QSget_colcount(p);
+	const int nrow = rat_QSget_rowcount(p);
+	char*sense=0;
+	int*rowcnt=0;
+	int*rowbeg=0;
+	int*rowind=0;
+	int objsense;
+	rat_t*rat_lb=0;
+	rat_t*rat_ub=0;
+	rat_t*rat_obj=0;
+	rat_t*rat_range=0;
+	rat_t*rat_rhs=0;
+	rat_t*rat_rowval=0;
+	double*dbl_lb=0;
+	double*dbl_ub=0;
+	double*dbl_obj=0;
+	double*dbl_range=0;
+	double*dbl_rhs=0;
+	double*dbl_rowval=0;
+	dbl_QSdata *p2 = 0;
+	int rval = 0;
+	register int i;
+	rat_t rat_val;
+	double dbl_val;
+	rat_init(rat_val);
+	/* get all information */
+	EGcallD(rat_QSget_objsense(p,&objsense));
+	rat_lb = rat_EGlpNumAllocArray(ncol);
+	rat_ub = rat_EGlpNumAllocArray(ncol);
+	EGcallD(rat_QSget_bounds(p,rat_lb,rat_ub));
+	dbl_lb = QScopy_array_rat_dbl(rat_lb);
+	dbl_ub = QScopy_array_rat_dbl(rat_ub);
+	rat_EGlpNumFreeArray(rat_ub);
+	rat_obj = rat_lb;
+	rat_lb = 0;
+	EGcallD(rat_QSget_obj(p, rat_obj));
+	dbl_obj = QScopy_array_rat_dbl(rat_obj);
+	rat_EGlpNumFreeArray(rat_obj);
+	EGcallD(rat_QSget_ranged_rows(p, &rowcnt, &rowbeg, &rowind, &rat_rowval,
+																&rat_rhs, &sense, &rat_range, 0));
+	dbl_rowval = QScopy_array_rat_dbl(rat_rowval);
+	rat_EGlpNumFreeArray(rat_rowval);
+	dbl_range = QScopy_array_rat_dbl(rat_range);
+	rat_EGlpNumFreeArray(rat_range);
+	dbl_rhs = QScopy_array_rat_dbl(rat_rhs);
+	rat_EGlpNumFreeArray(rat_rhs);
+	/* create copy */
+	p2 = dbl_QScreate_prob (newname, objsense);
+	if (!p2) goto CLEANUP;
+	for( i = 0 ; i < ncol; i++)
+	{
+		EGcallD(dbl_QSnew_col(p2, dbl_obj[i], dbl_lb[i], dbl_ub[i], 0));
+	}
+	dbl_EGlpNumFreeArray(dbl_lb);
+	dbl_EGlpNumFreeArray(dbl_ub);
+	dbl_EGlpNumFreeArray(dbl_obj);
+	EGcallD(dbl_QSadd_ranged_rows(p2, nrow, rowcnt, rowbeg, rowind, 
+																dbl_rowval, dbl_rhs, sense, dbl_range, 0));
+	/* set parameters */
+	EGcallD(rat_QSget_param(p, QS_PARAM_PRIMAL_PRICING, &objsense));
+	EGcallD(dbl_QSset_param(p2, QS_PARAM_PRIMAL_PRICING, objsense));
+	EGcallD(rat_QSget_param(p, QS_PARAM_DUAL_PRICING, &objsense));
+	EGcallD(dbl_QSset_param(p2, QS_PARAM_DUAL_PRICING, objsense));
+	EGcallD(rat_QSget_param(p, QS_PARAM_SIMPLEX_DISPLAY, &objsense));
+	EGcallD(dbl_QSset_param(p2, QS_PARAM_SIMPLEX_DISPLAY, objsense));
+	EGcallD(rat_QSget_param(p, QS_PARAM_SIMPLEX_MAX_ITERATIONS, &objsense));
+	EGcallD(dbl_QSset_param(p2, QS_PARAM_SIMPLEX_MAX_ITERATIONS, objsense));
+	EGcallD(rat_QSget_param(p, QS_PARAM_SIMPLEX_SCALING, &objsense));
+	EGcallD(dbl_QSset_param(p2, QS_PARAM_SIMPLEX_SCALING, objsense));
+	EGcallD(rat_QSget_param_EGlpNum(p, QS_PARAM_SIMPLEX_MAX_TIME, &rat_val));
+	dbl_val = rat_to_d(rat_val);
+	EGcallD(dbl_QSset_param_EGlpNum(p2, QS_PARAM_SIMPLEX_MAX_TIME, dbl_val));
+	EGcallD(rat_QSget_param_EGlpNum(p, QS_PARAM_OBJULIM, &rat_val));
+	dbl_val = rat_to_d(rat_val);
+	EGcallD(dbl_QSset_param_EGlpNum(p2, QS_PARAM_OBJULIM, dbl_val));
+	EGcallD(rat_QSget_param_EGlpNum(p, QS_PARAM_OBJLLIM, &rat_val));
+	dbl_val = rat_to_d(rat_val);
+	EGcallD(dbl_QSset_param_EGlpNum(p2, QS_PARAM_OBJLLIM, dbl_val));
+	/* ending */
+	CLEANUP:
+	rat_clear(rat_val);
+	dbl_EGlpNumFreeArray(dbl_rowval);
+	dbl_EGlpNumFreeArray(dbl_range);
+	dbl_EGlpNumFreeArray(dbl_rhs);
+	dbl_EGlpNumFreeArray(dbl_lb);
+	dbl_EGlpNumFreeArray(dbl_ub);
+	dbl_EGlpNumFreeArray(dbl_obj);
+	rat_EGlpNumFreeArray(rat_rowval);
+	rat_EGlpNumFreeArray(rat_range);
+	rat_EGlpNumFreeArray(rat_rhs);
+	rat_EGlpNumFreeArray(rat_lb);
+	rat_EGlpNumFreeArray(rat_ub);
+	rat_EGlpNumFreeArray(rat_obj);
+	EGfree(rowcnt);
+	EGfree(rowbeg);
+	EGfree(rowind);
+	EGfree(sense);
+	if (rval)
+	{
+		dbl_QSfree_prob (p2);
+		p2 = 0;
+	}
+#if QSEXACT_SAVE_INT
+	else
+	{
+		dbl_QSwrite_prob (p2, "prob.dbl.lp", "LP");
+	}
+#endif
+	return p2;
+}
+
+/* ========================================================================= */
+mpf_QSdata *QScopy_prob_rat_mpf (rat_QSdata * p,
+																 const char *newname)
+{
+	const int ncol = rat_QSget_colcount(p);
+	const int nrow = rat_QSget_rowcount(p);
+	char*sense=0;
+	int*rowcnt=0;
+	int*rowbeg=0;
+	int*rowind=0;
+	int objsense;
+	rat_t*rat_lb=0;
+	rat_t*rat_ub=0;
+	rat_t*rat_obj=0;
+	rat_t*rat_range=0;
+	rat_t*rat_rhs=0;
+	rat_t*rat_rowval=0;
+	mpf_t*mpf_lb=0;
+	mpf_t*mpf_ub=0;
+	mpf_t*mpf_obj=0;
+	mpf_t*mpf_range=0;
+	mpf_t*mpf_rhs=0;
+	mpf_t*mpf_rowval=0;
+	mpf_QSdata *p2 = 0;
+	int rval = 0;
+	rat_t rat_val;
+	mpf_t mpf_val;
+	register int i;
+	rat_init(rat_val);
+	mpf_init(mpf_val);
+	/* get all information */
+	EGcallD(rat_QSget_objsense(p,&objsense));
+	rat_lb = rat_EGlpNumAllocArray(ncol);
+	rat_ub = rat_EGlpNumAllocArray(ncol);
+	EGcallD(rat_QSget_bounds(p,rat_lb,rat_ub));
+	mpf_lb = QScopy_array_rat_mpf(rat_lb);
+	mpf_ub = QScopy_array_rat_mpf(rat_ub);
+	rat_EGlpNumFreeArray(rat_ub);
+	rat_obj = rat_lb;
+	rat_lb = 0;
+	EGcallD(rat_QSget_obj(p, rat_obj));
+	mpf_obj = QScopy_array_rat_mpf(rat_obj);
+	rat_EGlpNumFreeArray(rat_obj);
+	EGcallD(rat_QSget_ranged_rows(p, &rowcnt, &rowbeg, &rowind, &rat_rowval, &rat_rhs, &sense, &rat_range, 0));
+	mpf_rowval = QScopy_array_rat_mpf(rat_rowval);
+	rat_EGlpNumFreeArray(rat_rowval);
+	mpf_range = QScopy_array_rat_mpf(rat_range);
+	rat_EGlpNumFreeArray(rat_range);
+	mpf_rhs = QScopy_array_rat_mpf(rat_rhs);
+	rat_EGlpNumFreeArray(rat_rhs);
+	/* create copy */
+	p2 = mpf_QScreate_prob (newname, objsense);
+	if (!p2) goto CLEANUP;
+	for( i = 0 ; i < ncol; i++)
+	{
+		EGcallD(mpf_QSnew_col(p2, mpf_obj[i], mpf_lb[i], mpf_ub[i], 0));
+	}
+	mpf_EGlpNumFreeArray(mpf_lb);
+	mpf_EGlpNumFreeArray(mpf_ub);
+	mpf_EGlpNumFreeArray(mpf_obj);
+	EGcallD(mpf_QSadd_ranged_rows(p2, nrow, rowcnt, rowbeg, rowind, (const mpf_t*)mpf_rowval,(const mpf_t*) mpf_rhs, sense,(const mpf_t*) mpf_range, 0));
+	/* set parameters */
+	EGcallD(rat_QSget_param(p, QS_PARAM_PRIMAL_PRICING, &objsense));
+	EGcallD(mpf_QSset_param(p2, QS_PARAM_PRIMAL_PRICING, objsense));
+	EGcallD(rat_QSget_param(p, QS_PARAM_DUAL_PRICING, &objsense));
+	EGcallD(mpf_QSset_param(p2, QS_PARAM_DUAL_PRICING, objsense));
+	EGcallD(rat_QSget_param(p, QS_PARAM_SIMPLEX_DISPLAY, &objsense));
+	EGcallD(mpf_QSset_param(p2, QS_PARAM_SIMPLEX_DISPLAY, objsense));
+	EGcallD(rat_QSget_param(p, QS_PARAM_SIMPLEX_MAX_ITERATIONS, &objsense));
+	EGcallD(mpf_QSset_param(p2, QS_PARAM_SIMPLEX_MAX_ITERATIONS, objsense));
+	EGcallD(rat_QSget_param(p, QS_PARAM_SIMPLEX_SCALING, &objsense));
+	EGcallD(mpf_QSset_param(p2, QS_PARAM_SIMPLEX_SCALING, objsense));
+	EGcallD(rat_QSget_param_EGlpNum(p, QS_PARAM_SIMPLEX_MAX_TIME, &rat_val));
+	mpf_set_rat(mpf_val,rat_val);
+	EGcallD(mpf_QSset_param_EGlpNum(p2, QS_PARAM_SIMPLEX_MAX_TIME, mpf_val));
+	EGcallD(rat_QSget_param_EGlpNum(p, QS_PARAM_OBJULIM, &rat_val));
+	mpf_set_rat(mpf_val,rat_val);
+	EGcallD(mpf_QSset_param_EGlpNum(p2, QS_PARAM_OBJULIM, mpf_val));
+	EGcallD(rat_QSget_param_EGlpNum(p, QS_PARAM_OBJLLIM, &rat_val));
+	mpf_set_rat(mpf_val,rat_val);
+	EGcallD(mpf_QSset_param_EGlpNum(p2, QS_PARAM_OBJLLIM, mpf_val));
+	/* ending */
+	CLEANUP:
+	rat_clear(rat_val);
+	mpf_clear(mpf_val);
+	mpf_EGlpNumFreeArray(mpf_rowval);
+	mpf_EGlpNumFreeArray(mpf_range);
+	mpf_EGlpNumFreeArray(mpf_rhs);
+	mpf_EGlpNumFreeArray(mpf_lb);
+	mpf_EGlpNumFreeArray(mpf_ub);
+	mpf_EGlpNumFreeArray(mpf_obj);
+	rat_EGlpNumFreeArray(rat_rowval);
+	rat_EGlpNumFreeArray(rat_range);
+	rat_EGlpNumFreeArray(rat_rhs);
+	rat_EGlpNumFreeArray(rat_lb);
+	rat_EGlpNumFreeArray(rat_ub);
+	rat_EGlpNumFreeArray(rat_obj);
+	EGfree(rowcnt);
+	EGfree(rowbeg);
+	EGfree(rowind);
+	EGfree(sense);
+	if (rval)
+	{
+		mpf_QSfree_prob (p2);
+		p2 = 0;
+	}
+#if QSEXACT_SAVE_INT
+	else
+	{
+		mpf_QSwrite_prob (p2, "prob.mpf.lp", "LP");
+	}
+#endif
+	return p2;
+}
+
 #if QSEXACT_SAVE_OPTIMAL
 /* ========================================================================= */
 /** @brief used to enumerate the generated optimal tests */
@@ -1721,6 +1952,7 @@ void QSexactStart(void)
 	dbl_ILLstart();
 	mpf_ILLstart();
 	mpq_ILLstart();
+	rat_ILLstart();
 	/* ending */
 	__QSexact_setup = 1;
 }
@@ -1732,6 +1964,7 @@ void QSexactClear(void)
 	dbl_ILLend();
 	mpf_ILLend();
 	mpq_ILLend();
+	rat_ILLend();
 	EXutilDoClear();
 	/* ending */
 	EGlpNumClear();

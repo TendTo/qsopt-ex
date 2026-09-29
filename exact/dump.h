@@ -20,6 +20,7 @@
 #define QS_DUMP_H__
 
 #include "qstruct_mpq.h"
+#include "qstruct_rat.h"
 
 void mpq_QSdump_xbz (const mpq_QSdata *p_mpq);
 void mpq_QSdump_piz (const mpq_QSdata *p_mpq);
@@ -33,5 +34,18 @@ void mpq_QSdump_prob (const mpq_QSdata *p_mpq);
 
 // p_mpq can't be const because it is passed to mpq_ILLlib_tableau()
 int mpq_QSdump_basis (mpq_QSdata *p_mpq);
+
+void rat_QSdump_xbz (const rat_QSdata *p_rat);
+void rat_QSdump_piz (const rat_QSdata *p_rat);
+void rat_QSdump_bz (const rat_QSdata *p_rat);
+void rat_QSdump_xnbz (const rat_QSdata *p_rat);
+void rat_QSdump_bfeas (const rat_QSdata *p_rat);
+void rat_QSdump_array (const rat_t *array, const char* tag);
+
+void rat_QSdump_prob_col (const rat_QSdata *p_rat, int index, int col, char type);
+void rat_QSdump_prob (const rat_QSdata *p_rat);
+
+// p_rat can't be const because it is passed to rat_ILLlib_tableau()
+int rat_QSdump_basis (rat_QSdata *p_rat);
 
 #endif /* ! QS_DUMP_H__ */
