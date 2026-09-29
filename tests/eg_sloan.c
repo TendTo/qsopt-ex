@@ -37,6 +37,8 @@ const char *out_file = NULL;
 static unsigned t = 2;
 /** @brief temporal string space */
 char strtmp[1024];
+/** @brief whether to output the dual problem */
+static int use_dual = 0;
 /*@}*/
 
 /* ========================================================================= */
@@ -62,6 +64,7 @@ static inline void sl_usage (char const *const s)
 					 "    -s n   if n > 0 scale the resulting LP, otherwise present the unscaled LP\n");
 	fprintf (stderr, "    -t n   required strength of the OA (>=1)\n");
 	fprintf (stderr, "    -m n   if n > 0 output in MPS format, otherwise, write it in LP format\n");
+	fprintf (stderr, "    -i n   if n > 0 output the dual problem, otherwise, output the primal problem\n");
 }
 
 /* ========================================================================= */
@@ -70,7 +73,7 @@ static inline int sl_parseargs (int argc,
 																char **argv)
 {
 	int c;
-	while ((c = getopt (argc, argv, "a:b:c:e:f:m:s:d:o:t:")) != EOF)
+	while ((c = getopt (argc, argv, "a:b:c:e:f:m:s:d:o:t:i:")) != EOF)
 	{
 		switch (c)
 		{
@@ -104,7 +107,11 @@ static inline int sl_parseargs (int argc,
 		case 't':
 			t = atoi (optarg);
 			break;
+		case 'i':
+			use_dual = atoi (optarg);
+			break;
 		default:
+			printf ("Unknown option %c\n", c);
 			sl_usage (argv[0]);
 			return 1;
 		}
@@ -173,6 +180,117 @@ void Kpoly (unsigned x,
 	mpz_clear (z2);
 }
 
+mpq_QSdata * to_dual(mpq_QSdata *p_mpq, char problem_name[]) {
+	mpq_QSdata * dual_p_mpq = 0;
+	mpq_t oneLpNum;
+	mpq_init(oneLpNum);
+	mpq_set_si(oneLpNum, 1, 1);
+
+	dual_p_mpq = mpq_QScreate_prob (problem_name, QS_MIN);
+	int n_cols = mpq_QSget_colcount(p_mpq);
+	int n_rows = mpq_QSget_rowcount(p_mpq);
+
+	mpq_t obj_coeffs[n_cols];
+	for (int i = 0; i < n_cols; i++) {
+		mpq_init(obj_coeffs[i]);
+	}
+	mpq_QSget_obj(p_mpq, obj_coeffs);
+	mpq_t rhss[n_rows];
+	for (int i = 0; i < n_rows; i++) {
+		mpq_init(rhss[i]);
+	}
+	mpq_QSget_rhs(p_mpq, rhss);
+
+	char senses[n_rows];
+	mpq_QSget_senses(p_mpq, senses);
+
+	for (int row = 0; row < n_rows; row++) {
+		if (senses[row] == 'E') {
+			mpq_QSnew_col(dual_p_mpq, rhss[row], mpq_NINFTY, mpq_INFTY, NULL);
+		} else if (senses[row] == 'G') {
+			mpq_QSnew_col(dual_p_mpq, rhss[row], mpq_NINFTY, mpq_zeroLpNum, NULL);
+		} else if (senses[row] == 'L') {
+			mpq_QSnew_col(dual_p_mpq, rhss[row], mpq_zeroLpNum, mpq_INFTY, NULL);
+		} else {
+			fprintf(stderr, "Unknown sense %c for row %d\n", senses[row], row);
+			exit(1);
+		}
+	}
+
+	for (int col = 0; col < n_cols; col++) {
+		mpq_t lower, upper;
+		mpq_init(lower);
+		mpq_init(upper);
+
+		mpq_QSget_bound(p_mpq, col, 'L', &lower);
+		mpq_QSget_bound(p_mpq, col, 'U', &upper);
+
+		if (mpq_cmp(lower, mpq_zeroLpNum) != 0 && mpq_cmp(lower, mpq_NINFTY) != 0) {
+			mpq_QSnew_col(dual_p_mpq, lower, mpq_NINFTY, mpq_zeroLpNum, NULL);
+			printf("Column %d has lower bound %s\n", col, mpq_get_str(NULL, 10, lower));
+		} else if (mpq_cmp(upper, mpq_zeroLpNum) != 0 && mpq_cmp(upper, mpq_INFTY) != 0) {
+			mpq_QSnew_col(dual_p_mpq, upper, mpq_zeroLpNum, mpq_INFTY, NULL);
+			printf("Column %d has upper bound %s\n", col, mpq_get_str(NULL, 10, upper));
+		} else {
+			continue;
+		}
+
+	}
+
+	for (int col = 0; col < n_cols; col++) {
+		mpq_t lower, upper;
+		mpq_init(lower);
+		mpq_init(upper);
+
+		mpq_QSget_bound(p_mpq, col, 'L', &lower);
+		mpq_QSget_bound(p_mpq, col, 'U', &upper);
+
+		char sense = '?';
+		if (mpq_cmp(lower, mpq_zeroLpNum) == 0) {
+			mpq_QSnew_row(dual_p_mpq, obj_coeffs[col], 'L', NULL);
+		} else if (mpq_cmp(upper, mpq_zeroLpNum) == 0) {
+			mpq_QSnew_row(dual_p_mpq, obj_coeffs[col], 'G', NULL);
+		} else if (mpq_cmp(lower, mpq_NINFTY) == 0 && mpq_cmp(upper, mpq_INFTY) == 0) {
+			mpq_QSnew_row(dual_p_mpq, obj_coeffs[col], 'E', NULL);
+		} else if (mpq_cmp(lower, mpq_zeroLpNum) != 0 && mpq_cmp(lower, mpq_NINFTY) != 0) {
+			mpq_QSnew_row(dual_p_mpq, obj_coeffs[col], 'E', NULL);
+			mpq_QSchange_coef(dual_p_mpq, col, mpq_QSget_colcount(dual_p_mpq) - 1, oneLpNum);
+		} else if (mpq_cmp(upper, mpq_zeroLpNum) != 0 && mpq_cmp(upper, mpq_INFTY) != 0) {
+			mpq_QSnew_row(dual_p_mpq, obj_coeffs[col], 'E', NULL);
+			mpq_QSchange_coef(dual_p_mpq, col, mpq_QSget_colcount(dual_p_mpq) - 1, oneLpNum);
+		} else {
+			printf("Column %d has lower bound %s and upper bound %s\n", col, mpq_get_str(NULL, 10, lower), mpq_get_str(NULL, 10, upper));
+			exit(1);
+		}
+
+		mpq_clear(lower);
+		mpq_clear(upper);
+
+		for (int row = 0; row < n_rows; row++) {
+			mpq_t coef;
+			mpq_init(coef);
+			mpq_QSget_coef(p_mpq, row, col, &coef);
+			mpq_QSchange_coef(dual_p_mpq, col, row, coef);
+			mpq_clear(coef);
+		}
+	}
+
+	// Invert the objective sense for the dual problem
+	int sense = 0;
+	mpq_QSget_objsense(p_mpq, &sense);
+	mpq_QSchange_objsense(dual_p_mpq, sense == QS_MIN ? QS_MAX : QS_MIN);
+
+	for (int i = 0; i < n_cols; i++) {
+		mpq_clear(obj_coeffs[i]);
+	}
+	for (int i = 0; i < n_rows; i++) {
+		mpq_clear(rhss[i]);
+	}
+	mpq_clear(oneLpNum);
+
+	return dual_p_mpq;
+}
+
 /* ========================================================================= */
 /** @brief main function, here we build the LP, execute the options and exit */
 int main (int argc,
@@ -237,6 +355,13 @@ int main (int argc,
 		mpq_div (v2, mpq_oneLpNum, v1);
 		fprintf (stderr, "Scale factor %lf\n", mpq_get_d (v2));
 	}
+	
+	if (use_dual) {
+		mpq_QSdata * dual_p_mpq = to_dual(p_mpq, strtmp);
+		mpq_QSfree_prob(p_mpq);
+		p_mpq = dual_p_mpq;
+	}
+
 	/* now we save the LP */
 	if (use_double)
 	{
